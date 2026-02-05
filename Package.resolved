@@ -1,5 +1,5 @@
 {
-  "originHash" : "b6208d1f67d06f243a4cf18c4e4772b65903e3eb784c297b70a09fba771fbabc",
+  "originHash" : "60c1e5efb4718ac1c1865c999cc85e384696c8487cd4879733adc5d1ccb45491",
   "pins" : [
     {
       "identity" : "mlx-swift",
@@ -96,8 +96,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/rryam/VecturaKit.git",
       "state" : {
-        "branch" : "feature/extract-mlx-to-separate-repo",
-        "revision" : "e1ec5a36f2f80f9fac216b54393b3468f1a6c89a"
+        "revision" : "d7038f62e0372dd7641c58fa7f5e2fb503b145d4",
+        "version" : "4.0.0"
       }
     }
   ],
