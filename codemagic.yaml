@@ -1,0 +1,57 @@
+definitions:
+  triggering:
+    push: &events
+      events:
+        - push
+        - pull_request
+  scripts:
+    - &swiftlint
+      name: SwiftLint
+      script: |
+        #!/bin/zsh
+
+        swiftlint --strict
+    - &build_framework
+      name: Build Framework
+      script: |
+        #!/bin/zsh
+
+        xcodebuild clean build \
+          -scheme "$XCODE_SCHEME" \
+          -destination "platform=macOS" \
+          -skipPackagePluginValidation
+    - &run_tests
+      name: Run Tests
+      script: |
+        #!/bin/zsh
+
+        # Set environment variables for model downloads
+        export HF_HUB_OFFLINE=0
+
+        # Run tests (excluding PerformanceTests)
+        # Using --no-parallel to avoid concurrent model download issues
+        swift test --no-parallel
+workflows:
+  vecturamlxkit:
+    name: VecturaMLXKit Workflow
+    environment:
+      xcode: 26.2
+      vars:
+        XCODE_SCHEME: "VecturaMLXKit"
+        APP_ID: "VecturaMLXKit"
+    when:
+      changeset:
+        includes:
+          - 'Sources'
+          - 'Tests'
+    triggering:
+      <<: *events
+    scripts:
+      - *swiftlint
+      - name: Install Metal Toolchain
+        script: |
+          #!/bin/zsh
+
+          xcodebuild -downloadComponent MetalToolchain
+      - *build_framework
+      - *run_tests
