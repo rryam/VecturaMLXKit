@@ -6,7 +6,7 @@ import PackageDescription
 let package = Package(
   name: "VecturaMLXKit",
   platforms: [
-    .macOS(.v14),
+    .macOS(.v15),
     .iOS(.v17),
     .tvOS(.v17),
     .visionOS(.v1),
