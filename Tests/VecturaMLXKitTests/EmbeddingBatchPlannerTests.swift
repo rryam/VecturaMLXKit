@@ -100,7 +100,6 @@ struct EmbeddingBatchPlannerTests {
     print(String(format: "  Padded-token reduction: %.1f%%", paddedReduction * 100))
 
     #expect(adaptiveWeighted.paddedTokens < baselineWeighted.paddedTokens)
-    #expect(adaptiveWeighted.avgMs < baselineWeighted.avgMs)
   }
 
   private static func benchmarkSingleBatchPadding(

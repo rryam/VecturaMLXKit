@@ -96,7 +96,7 @@ public actor MLXEmbedder: VecturaEmbedder {
           maxLength: plan.maxTokenLength
         )
         let mask = stacked(maskRows.map { row in
-          MLXArray(row.map(Int32.init))
+          MLXArray(row.map { $0 != 0 })
         })
         let tokenTypes = MLXArray.zeros(like: padded)
 
