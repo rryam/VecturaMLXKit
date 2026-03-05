@@ -7,6 +7,7 @@ import VecturaKit
 public actor MLXEmbedder: VecturaEmbedder {
   private let modelContainer: ModelContainer
   private let configuration: ModelConfiguration
+  private let adaptiveBatchingEnabled: Bool
   private var cachedDimension: Int?
 
   /// Initializes an MLXEmbedder with the specified model configuration.
@@ -15,6 +16,7 @@ public actor MLXEmbedder: VecturaEmbedder {
   /// - Throws: An error if the model container cannot be loaded.
   public init(configuration: ModelConfiguration = .nomic_text_v1_5) async throws {
     self.configuration = configuration
+    self.adaptiveBatchingEnabled = Self.resolveAdaptiveBatchingSetting()
     self.modelContainer = try await MLXEmbedders.loadModelContainer(configuration: configuration)
   }
 
@@ -56,12 +58,22 @@ public actor MLXEmbedder: VecturaEmbedder {
       let inputs = texts.map {
         tokenizer.encode(text: $0, addSpecialTokens: true)
       }
-      let batchPlans = EmbeddingBatchPlanner.makePlans(tokenizedInputs: inputs)
-
-      // Determine padding token
-      guard let padToken = tokenizer.eosTokenId else {
-        throw EmbeddingError.noPaddingToken
+      let batchPlans: [EmbeddingBatchPlan]
+      if self.adaptiveBatchingEnabled {
+        batchPlans = EmbeddingBatchPlanner.makePlans(tokenizedInputs: inputs)
+      } else {
+        batchPlans = [EmbeddingBatchPlan(
+          originalIndices: Array(inputs.indices),
+          maxTokenLength: inputs.map(\.count).max() ?? 0
+        )]
       }
+
+      // Some tokenizers do not expose EOS; use a deterministic fallback chain.
+      let padToken = EmbeddingTokenResolver.paddingTokenID(
+        eosTokenID: tokenizer.eosTokenId,
+        unknownTokenID: tokenizer.unknownTokenId,
+        bosTokenID: tokenizer.bosTokenId
+      )
 
       var vectors = Array(repeating: [Float](), count: texts.count)
       var emittedVectors = 0
@@ -78,7 +90,14 @@ public actor MLXEmbedder: VecturaEmbedder {
           }
         )
 
-        let mask = (padded .!= padToken)
+        let sequenceLengths = plan.originalIndices.map { inputs[$0].count }
+        let maskRows = EmbeddingTokenResolver.attentionMaskRows(
+          lengths: sequenceLengths,
+          maxLength: plan.maxTokenLength
+        )
+        let mask = stacked(maskRows.map { row in
+          MLXArray(row.map(Int32.init))
+        })
         let tokenTypes = MLXArray.zeros(like: padded)
 
         // Call model to get outputs
@@ -137,8 +156,22 @@ public actor MLXEmbedder: VecturaEmbedder {
   }
 }
 
+extension MLXEmbedder {
+  private static func resolveAdaptiveBatchingSetting() -> Bool {
+    guard let rawValue = ProcessInfo.processInfo.environment["VECTURA_MLX_ADAPTIVE_BATCHING"] else {
+      return true
+    }
+    let normalized = rawValue.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    switch normalized {
+    case "0", "false", "no", "off":
+      return false
+    default:
+      return true
+    }
+  }
+}
+
 enum EmbeddingError: Error {
-  case noPaddingToken
   case unsupportedPoolingShape([Int])
   case vectorCountMismatch(expected: Int, received: Int)
 }
