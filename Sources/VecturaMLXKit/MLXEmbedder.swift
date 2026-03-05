@@ -56,66 +56,82 @@ public actor MLXEmbedder: VecturaEmbedder {
       let inputs = texts.map {
         tokenizer.encode(text: $0, addSpecialTokens: true)
       }
+      let batchPlans = EmbeddingBatchPlanner.makePlans(tokenizedInputs: inputs)
 
       // Determine padding token
       guard let padToken = tokenizer.eosTokenId else {
         throw EmbeddingError.noPaddingToken
       }
 
-      // Calculate actual max length from inputs
-      let maxLength = inputs.map { $0.count }.max() ?? 0
+      var vectors = Array(repeating: [Float](), count: texts.count)
+      var emittedVectors = 0
 
-      let padded = stacked(
-        inputs.map { tokens in
-          MLXArray(tokens + Array(repeating: padToken, count: maxLength - tokens.count))
-        })
-
-      let mask = (padded .!= padToken)
-      let tokenTypes = MLXArray.zeros(like: padded)
-
-      // Call model to get outputs
-      let outputs = model(
-        padded,
-        positionIds: nil,
-        tokenTypeIds: tokenTypes,
-        attentionMask: mask
-      )
-
-      // Apply pooling with mask explicitly
-      let pooled = pooling(
-        outputs,
-        mask: mask,
-        normalize: true,
-        applyLayerNorm: true
-      )
-      pooled.eval()
-
-      // Handle both 2D [batch, dim] and 3D [batch, seq, dim] shapes
-      let finalEmbeddings: MLXArray
-      switch pooled.ndim {
-      case 2:
-        // Expected shape: [batch, dimension]
-        finalEmbeddings = pooled
-
-      case 3:
-        // Fallback: pooling returned sequence embeddings [batch, seq, dim]
-        // Apply mean pooling over sequence dimension
-        finalEmbeddings = mean(pooled, axis: 1)
-        finalEmbeddings.eval()
-
-      default:
-        throw EmbeddingError.unsupportedPoolingShape(pooled.shape)
-      }
-
-      let vectors = finalEmbeddings.map { $0.asArray(Float.self) }
-
-      guard vectors.count == texts.count else {
-        throw EmbeddingError.vectorCountMismatch(
-          expected: texts.count,
-          received: vectors.count
+      for plan in batchPlans {
+        let padded = stacked(
+          plan.originalIndices.map { index in
+            var tokens = inputs[index]
+            if tokens.count < plan.maxTokenLength {
+              tokens.reserveCapacity(plan.maxTokenLength)
+              tokens.append(contentsOf: repeatElement(padToken, count: plan.maxTokenLength - tokens.count))
+            }
+            return MLXArray(tokens)
+          }
         )
+
+        let mask = (padded .!= padToken)
+        let tokenTypes = MLXArray.zeros(like: padded)
+
+        // Call model to get outputs
+        let outputs = model(
+          padded,
+          positionIds: nil,
+          tokenTypeIds: tokenTypes,
+          attentionMask: mask
+        )
+
+        // Apply pooling with mask explicitly
+        let pooled = pooling(
+          outputs,
+          mask: mask,
+          normalize: true,
+          applyLayerNorm: true
+        )
+        pooled.eval()
+
+        // Handle both 2D [batch, dim] and 3D [batch, seq, dim] shapes
+        let finalEmbeddings: MLXArray
+        switch pooled.ndim {
+        case 2:
+          // Expected shape: [batch, dimension]
+          finalEmbeddings = pooled
+
+        case 3:
+          // Fallback: pooling returned sequence embeddings [batch, seq, dim]
+          // Apply mean pooling over sequence dimension
+          finalEmbeddings = mean(pooled, axis: 1)
+          finalEmbeddings.eval()
+
+        default:
+          throw EmbeddingError.unsupportedPoolingShape(pooled.shape)
+        }
+
+        let batchVectors = finalEmbeddings.map { $0.asArray(Float.self) }
+        guard batchVectors.count == plan.originalIndices.count else {
+          throw EmbeddingError.vectorCountMismatch(
+            expected: plan.originalIndices.count,
+            received: batchVectors.count
+          )
+        }
+
+        for (offset, originalIndex) in plan.originalIndices.enumerated() {
+          vectors[originalIndex] = batchVectors[offset]
+          emittedVectors += 1
+        }
       }
 
+      guard emittedVectors == texts.count else {
+        throw EmbeddingError.vectorCountMismatch(expected: texts.count, received: emittedVectors)
+      }
       return vectors
     }
   }
