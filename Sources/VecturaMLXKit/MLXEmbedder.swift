@@ -7,6 +7,7 @@ import VecturaKit
 public actor MLXEmbedder: VecturaEmbedder {
   private let modelContainer: ModelContainer
   private let configuration: ModelConfiguration
+  private let adaptiveBatchingEnabled: Bool
   private var cachedDimension: Int?
 
   /// Initializes an MLXEmbedder with the specified model configuration.
@@ -15,6 +16,7 @@ public actor MLXEmbedder: VecturaEmbedder {
   /// - Throws: An error if the model container cannot be loaded.
   public init(configuration: ModelConfiguration = .nomic_text_v1_5) async throws {
     self.configuration = configuration
+    self.adaptiveBatchingEnabled = Self.resolveAdaptiveBatchingSetting()
     self.modelContainer = try await MLXEmbedders.loadModelContainer(configuration: configuration)
   }
 
@@ -56,73 +58,120 @@ public actor MLXEmbedder: VecturaEmbedder {
       let inputs = texts.map {
         tokenizer.encode(text: $0, addSpecialTokens: true)
       }
-
-      // Determine padding token
-      guard let padToken = tokenizer.eosTokenId else {
-        throw EmbeddingError.noPaddingToken
+      let batchPlans: [EmbeddingBatchPlan]
+      if self.adaptiveBatchingEnabled {
+        batchPlans = EmbeddingBatchPlanner.makePlans(tokenizedInputs: inputs)
+      } else {
+        batchPlans = [EmbeddingBatchPlan(
+          originalIndices: Array(inputs.indices),
+          maxTokenLength: inputs.map(\.count).max() ?? 0
+        )]
       }
 
-      // Calculate actual max length from inputs
-      let maxLength = inputs.map { $0.count }.max() ?? 0
-
-      let padded = stacked(
-        inputs.map { tokens in
-          MLXArray(tokens + Array(repeating: padToken, count: maxLength - tokens.count))
-        })
-
-      let mask = (padded .!= padToken)
-      let tokenTypes = MLXArray.zeros(like: padded)
-
-      // Call model to get outputs
-      let outputs = model(
-        padded,
-        positionIds: nil,
-        tokenTypeIds: tokenTypes,
-        attentionMask: mask
+      // Some tokenizers do not expose EOS; use a deterministic fallback chain.
+      let padToken = EmbeddingTokenResolver.paddingTokenID(
+        eosTokenID: tokenizer.eosTokenId,
+        unknownTokenID: tokenizer.unknownTokenId,
+        bosTokenID: tokenizer.bosTokenId
       )
 
-      // Apply pooling with mask explicitly
-      let pooled = pooling(
-        outputs,
-        mask: mask,
-        normalize: true,
-        applyLayerNorm: true
-      )
-      pooled.eval()
+      var vectors = Array(repeating: [Float](), count: texts.count)
+      var emittedVectors = 0
 
-      // Handle both 2D [batch, dim] and 3D [batch, seq, dim] shapes
-      let finalEmbeddings: MLXArray
-      switch pooled.ndim {
-      case 2:
-        // Expected shape: [batch, dimension]
-        finalEmbeddings = pooled
-
-      case 3:
-        // Fallback: pooling returned sequence embeddings [batch, seq, dim]
-        // Apply mean pooling over sequence dimension
-        finalEmbeddings = mean(pooled, axis: 1)
-        finalEmbeddings.eval()
-
-      default:
-        throw EmbeddingError.unsupportedPoolingShape(pooled.shape)
-      }
-
-      let vectors = finalEmbeddings.map { $0.asArray(Float.self) }
-
-      guard vectors.count == texts.count else {
-        throw EmbeddingError.vectorCountMismatch(
-          expected: texts.count,
-          received: vectors.count
+      for plan in batchPlans {
+        let padded = stacked(
+          plan.originalIndices.map { index in
+            var tokens = inputs[index]
+            if tokens.count < plan.maxTokenLength {
+              tokens.reserveCapacity(plan.maxTokenLength)
+              tokens.append(contentsOf: repeatElement(padToken, count: plan.maxTokenLength - tokens.count))
+            }
+            return MLXArray(tokens)
+          }
         )
+
+        let sequenceLengths = plan.originalIndices.map { inputs[$0].count }
+        let maskRows = EmbeddingTokenResolver.attentionMaskRows(
+          lengths: sequenceLengths,
+          maxLength: plan.maxTokenLength
+        )
+        let mask = stacked(maskRows.map { row in
+          MLXArray(row.map(Int32.init))
+        })
+        let tokenTypes = MLXArray.zeros(like: padded)
+
+        // Call model to get outputs
+        let outputs = model(
+          padded,
+          positionIds: nil,
+          tokenTypeIds: tokenTypes,
+          attentionMask: mask
+        )
+
+        // Apply pooling with mask explicitly
+        let pooled = pooling(
+          outputs,
+          mask: mask,
+          normalize: true,
+          applyLayerNorm: true
+        )
+        pooled.eval()
+
+        // Handle both 2D [batch, dim] and 3D [batch, seq, dim] shapes
+        let finalEmbeddings: MLXArray
+        switch pooled.ndim {
+        case 2:
+          // Expected shape: [batch, dimension]
+          finalEmbeddings = pooled
+
+        case 3:
+          // Fallback: pooling returned sequence embeddings [batch, seq, dim]
+          // Apply mean pooling over sequence dimension
+          finalEmbeddings = mean(pooled, axis: 1)
+          finalEmbeddings.eval()
+
+        default:
+          throw EmbeddingError.unsupportedPoolingShape(pooled.shape)
+        }
+
+        let batchVectors = finalEmbeddings.map { $0.asArray(Float.self) }
+        guard batchVectors.count == plan.originalIndices.count else {
+          throw EmbeddingError.vectorCountMismatch(
+            expected: plan.originalIndices.count,
+            received: batchVectors.count
+          )
+        }
+
+        for (offset, originalIndex) in plan.originalIndices.enumerated() {
+          vectors[originalIndex] = batchVectors[offset]
+          emittedVectors += 1
+        }
       }
 
+      guard emittedVectors == texts.count else {
+        throw EmbeddingError.vectorCountMismatch(expected: texts.count, received: emittedVectors)
+      }
       return vectors
     }
   }
 }
 
+extension MLXEmbedder {
+  private static func resolveAdaptiveBatchingSetting() -> Bool {
+    guard let rawValue = ProcessInfo.processInfo.environment["VECTURA_MLX_ADAPTIVE_BATCHING"] else {
+      return true
+    }
+    let normalized = rawValue.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    switch normalized {
+    case "0", "false", "no", "off":
+      return false
+    default:
+      return true
+    }
+  }
+}
+
 enum EmbeddingError: Error {
-  case noPaddingToken
   case unsupportedPoolingShape([Int])
   case vectorCountMismatch(expected: Int, received: Int)
 }
