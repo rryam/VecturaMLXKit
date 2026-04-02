@@ -5,10 +5,11 @@ MLX-based embeddings for [VecturaKit](https://github.com/rryam/VecturaKit) — G
 <p align="center">
   <img src="https://img.shields.io/badge/Swift-6.0+-fa7343?style=flat&logo=swift&logoColor=white" alt="Swift 6.0+">
   <br>
-  <img src="https://img.shields.io/badge/iOS-17.0+-000000?style=flat&logo=apple&logoColor=white" alt="iOS 17.0+">
-  <img src="https://img.shields.io/badge/macOS-14.0+-000000?style=flat&logo=apple&logoColor=white" alt="macOS 14.0+">
-  <img src="https://img.shields.io/badge/tvOS-17.0+-000000?style=flat&logo=apple&logoColor=white" alt="tvOS 17.0+">
-  <img src="https://img.shields.io/badge/visionOS-1.0+-000000?style=flat&logo=apple&logoColor=white" alt="visionOS 1.0+">
+  <img src="https://img.shields.io/badge/iOS-18.0+-000000?style=flat&logo=apple&logoColor=white" alt="iOS 18.0+">
+  <img src="https://img.shields.io/badge/macOS-15.0+-000000?style=flat&logo=apple&logoColor=white" alt="macOS 15.0+">
+  <img src="https://img.shields.io/badge/tvOS-18.0+-000000?style=flat&logo=apple&logoColor=white" alt="tvOS 18.0+">
+  <img src="https://img.shields.io/badge/visionOS-2.0+-000000?style=flat&logo=apple&logoColor=white" alt="visionOS 2.0+">
+  <img src="https://img.shields.io/badge/watchOS-11.0+-000000?style=flat&logo=apple&logoColor=white" alt="watchOS 11.0+">
 </p>
 
 ## Overview
@@ -23,10 +24,13 @@ Add both VecturaKit and VecturaMLXKit to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/rryam/VecturaKit.git", from: "3.0.0"),
-    .package(url: "https://github.com/rryam/VecturaMLXKit.git", from: "1.0.0"),
+    .package(url: "https://github.com/rryam/VecturaKit.git", from: "5.0.0"),
+    .package(url: "https://github.com/rryam/VecturaMLXKit.git", from: "2.0.0"),
 ],
 ```
+
+`VecturaMLXKit` 2.x tracks the `VecturaKit` 5.x release line and shares the same minimum deployment targets:
+macOS 15, iOS 18, tvOS 18, visionOS 2, and watchOS 11.
 
 Or add them via Xcode's **File > Add Package Dependencies** UI — no special configuration needed.
 
