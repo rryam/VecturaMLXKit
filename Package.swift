@@ -7,10 +7,10 @@ let package = Package(
   name: "VecturaMLXKit",
   platforms: [
     .macOS(.v15),
-    .iOS(.v17),
-    .tvOS(.v17),
-    .visionOS(.v1),
-    .watchOS(.v10),
+    .iOS(.v18),
+    .tvOS(.v18),
+    .visionOS(.v2),
+    .watchOS(.v11),
   ],
   products: [
     .library(
@@ -23,7 +23,7 @@ let package = Package(
     ),
   ],
   dependencies: [
-    .package(url: "https://github.com/rryam/VecturaKit.git", from: "4.0.0"),
+    .package(url: "https://github.com/rryam/VecturaKit.git", from: "5.0.0"),
     .package(url: "https://github.com/ml-explore/mlx-swift-lm/", from: "2.30.3"),
     .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.4.0"),
   ],
