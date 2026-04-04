@@ -126,6 +126,35 @@ Options:
 -   `--threshold, -t`: Minimum similarity threshold (default: 0.7)
 -   `--num-results, -n`: Number of results to return (default: 10)
 
+## Local Validation
+
+For fast compile checks, `swift build` and `swift test` are fine. For MLX runtime verification on macOS, use Xcode or `xcodebuild` instead of `swift run`.
+
+`swift run vectura-mlx-cli ...` can compile successfully and still fail at runtime if the MLX Metal bundle is not packaged into the SwiftPM CLI build. The reliable path is an Xcode-style build that emits `mlx-swift_Cmlx.bundle/Contents/Resources/default.metallib`.
+
+Recommended local smoke test:
+
+```bash
+xcrun --find metal
+xcrun --find metallib
+
+xcodebuild \
+  -scheme vectura-mlx-cli \
+  -destination 'platform=macOS' \
+  -derivedDataPath /tmp/VecturaMLXKit-xc \
+  build
+
+find /tmp/VecturaMLXKit-xc/Build/Products/Debug -name default.metallib
+
+/tmp/VecturaMLXKit-xc/Build/Products/Debug/vectura-mlx-cli mock --db-name qa-db
+```
+
+Expected behavior:
+
+- `default.metallib` is present under `mlx-swift_Cmlx.bundle`
+- the CLI gets past `Setting up database...`
+- the mock flow resets the database, adds sample documents, searches, updates, deletes, and exits successfully
+
 ## Dependencies
 
 - [VecturaKit](https://github.com/rryam/VecturaKit): Core vector database
