@@ -1,21 +1,28 @@
 import Foundation
+import HuggingFace
 import MLX
 import MLXEmbedders
+import MLXLMCommon
+import Tokenizers
 import VecturaKit
 
 /// An embedder implementation using MLX library for generating vector embeddings.
 public actor MLXEmbedder: VecturaEmbedder {
-  private let modelContainer: ModelContainer
-  private let configuration: ModelConfiguration
+  private let modelContainer: MLXEmbedders.ModelContainer
+  private let configuration: MLXEmbedders.ModelConfiguration
   private var cachedDimension: Int?
 
   /// Initializes an MLXEmbedder with the specified model configuration.
   ///
   /// - Parameter configuration: The MLX model configuration to use. Defaults to `.nomic_text_v1_5`.
   /// - Throws: An error if the model container cannot be loaded.
-  public init(configuration: ModelConfiguration = .nomic_text_v1_5) async throws {
+  public init(configuration: MLXEmbedders.ModelConfiguration = .nomic_text_v1_5) async throws {
     self.configuration = configuration
-    self.modelContainer = try await MLXEmbedders.loadModelContainer(configuration: configuration)
+    self.modelContainer = try await MLXEmbedders.loadModelContainer(
+      from: HuggingFaceDownloader(),
+      using: TransformersTokenizerLoader(),
+      configuration: configuration
+    )
   }
 
   /// The dimensionality of the embedding vectors produced by this embedder.
@@ -125,4 +132,85 @@ enum EmbeddingError: Error {
   case noPaddingToken
   case unsupportedPoolingShape([Int])
   case vectorCountMismatch(expected: Int, received: Int)
+  case invalidRepositoryID(String)
+}
+
+private struct HuggingFaceDownloader: MLXLMCommon.Downloader {
+  private let client: HubClient
+
+  init(client: HubClient = .default) {
+    self.client = client
+  }
+
+  func download(
+    id: String,
+    revision: String?,
+    matching patterns: [String],
+    useLatest _: Bool,
+    progressHandler: @Sendable @escaping (Progress) -> Void
+  ) async throws -> URL {
+    guard let repoID = HuggingFace.Repo.ID(rawValue: id) else {
+      throw EmbeddingError.invalidRepositoryID(id)
+    }
+
+    return try await client.downloadSnapshot(
+      of: repoID,
+      revision: revision ?? "main",
+      matching: patterns,
+      progressHandler: { @MainActor progress in
+        progressHandler(progress)
+      }
+    )
+  }
+}
+
+private struct TransformersTokenizerLoader: MLXLMCommon.TokenizerLoader {
+  func load(from directory: URL) async throws -> any MLXLMCommon.Tokenizer {
+    let upstream = try await AutoTokenizer.from(modelFolder: directory)
+    return HuggingFaceTokenizerBridge(upstream)
+  }
+}
+
+private struct HuggingFaceTokenizerBridge: MLXLMCommon.Tokenizer {
+  private let upstream: any Tokenizers.Tokenizer
+
+  init(_ upstream: any Tokenizers.Tokenizer) {
+    self.upstream = upstream
+  }
+
+  func encode(text: String, addSpecialTokens: Bool) -> [Int] {
+    upstream.encode(text: text, addSpecialTokens: addSpecialTokens)
+  }
+
+  func decode(tokenIds: [Int], skipSpecialTokens: Bool) -> String {
+    upstream.decode(tokens: tokenIds, skipSpecialTokens: skipSpecialTokens)
+  }
+
+  func convertTokenToId(_ token: String) -> Int? {
+    upstream.convertTokenToId(token)
+  }
+
+  func convertIdToToken(_ id: Int) -> String? {
+    upstream.convertIdToToken(id)
+  }
+
+  var bosToken: String? { upstream.bosToken }
+  var eosToken: String? { upstream.eosToken }
+  var unknownToken: String? { upstream.unknownToken }
+
+  func applyChatTemplate(
+    messages: [[String: any Sendable]],
+    tools: [[String: any Sendable]]?,
+    additionalContext: [String: any Sendable]?
+  ) throws -> [Int] {
+    do {
+      return try upstream.applyChatTemplate(
+        messages: messages,
+        tools: tools,
+        additionalContext: additionalContext
+      )
+    } catch Tokenizers.TokenizerError.missingChatTemplate {
+      throw MLXLMCommon.TokenizerError.missingChatTemplate
+    }
+  }
 }
