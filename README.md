@@ -155,6 +155,26 @@ Expected behavior:
 - the CLI gets past `Setting up database...`
 - the mock flow resets the database, adds sample documents, searches, updates, deletes, and exits successfully
 
+Adaptive batching is enabled by default. To compare behavior with the legacy single-batch path, set:
+
+```bash
+VECTURA_MLX_ADAPTIVE_BATCHING=0 /tmp/VecturaMLXKit-xc/Build/Products/Debug/vectura-mlx-cli mock --db-name qa-db-off
+VECTURA_MLX_ADAPTIVE_BATCHING=1 /tmp/VecturaMLXKit-xc/Build/Products/Debug/vectura-mlx-cli mock --db-name qa-db-on
+```
+
+To benchmark the real embedding pipeline, build the `TestMLXExamples` scheme and run it in benchmark mode:
+
+```bash
+xcodebuild \
+  -scheme TestMLXExamples \
+  -destination 'platform=macOS' \
+  -derivedDataPath /tmp/VecturaMLXKit-xc \
+  build
+
+MLX_RUNTIME_BENCH=1 VECTURA_MLX_ADAPTIVE_BATCHING=0 /tmp/VecturaMLXKit-xc/Build/Products/Debug/TestMLXExamples
+MLX_RUNTIME_BENCH=1 VECTURA_MLX_ADAPTIVE_BATCHING=1 /tmp/VecturaMLXKit-xc/Build/Products/Debug/TestMLXExamples
+```
+
 ## Dependencies
 
 - [VecturaKit](https://github.com/rryam/VecturaKit): Core vector database

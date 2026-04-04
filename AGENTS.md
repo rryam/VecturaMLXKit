@@ -8,6 +8,7 @@ VecturaMLXKit ships as a Swift package with library target `VecturaMLXKit` and e
 - `swift test --no-parallel` runs the Swift Testing suite.
 - `xcodebuild -scheme vectura-mlx-cli -destination 'platform=macOS' build` is the canonical local runtime validation path for MLX.
 - `./DerivedData/.../Build/Products/Debug/vectura-mlx-cli mock --db-name qa-db` is the preferred smoke test after an Xcode or `xcodebuild` build.
+- `MLX_RUNTIME_BENCH=1 ./DerivedData/.../Build/Products/Debug/TestMLXExamples` runs the runtime benchmark harness; toggle `VECTURA_MLX_ADAPTIVE_BATCHING=0|1` to compare batching modes.
 
 ## MLX Validation Notes
 For MLX-backed runtime verification, do not rely on `swift run vectura-mlx-cli ...` alone. SwiftPM CLI builds can compile successfully while still failing at runtime because the MLX `default.metallib` bundle is not available on that path. Use Xcode or `xcodebuild` for runtime validation so `mlx-swift_Cmlx.bundle/Contents/Resources/default.metallib` is emitted and packaged correctly.
@@ -18,6 +19,10 @@ Recommended verification flow:
 3. `xcodebuild -scheme vectura-mlx-cli -destination 'platform=macOS' -derivedDataPath /tmp/VecturaMLXKit-xc build`
 4. `find /tmp/VecturaMLXKit-xc/Build/Products/Debug -name default.metallib`
 5. `/tmp/VecturaMLXKit-xc/Build/Products/Debug/vectura-mlx-cli mock --db-name qa-db`
+6. `VECTURA_MLX_ADAPTIVE_BATCHING=0 /tmp/VecturaMLXKit-xc/Build/Products/Debug/vectura-mlx-cli mock --db-name qa-db-off`
+7. `VECTURA_MLX_ADAPTIVE_BATCHING=1 /tmp/VecturaMLXKit-xc/Build/Products/Debug/vectura-mlx-cli mock --db-name qa-db-on`
+8. `MLX_RUNTIME_BENCH=1 VECTURA_MLX_ADAPTIVE_BATCHING=0 /tmp/VecturaMLXKit-xc/Build/Products/Debug/TestMLXExamples`
+9. `MLX_RUNTIME_BENCH=1 VECTURA_MLX_ADAPTIVE_BATCHING=1 /tmp/VecturaMLXKit-xc/Build/Products/Debug/TestMLXExamples`
 
 ## Coding Style & Naming Conventions
 Follow Swift 6 defaults. Keep types UpperCamelCase, members lowerCamelCase, and prefer concise `///` comments for public APIs when behavior is not obvious. Preserve the current async/await style and avoid introducing legacy XCTest patterns into new tests.

@@ -79,7 +79,7 @@ public actor MLXEmbedder: VecturaEmbedder {
       let padToken = EmbeddingTokenResolver.paddingTokenID(
         eosTokenID: tokenizer.eosTokenId,
         unknownTokenID: tokenizer.unknownTokenId,
-        bosTokenID: tokenizer.bosTokenId
+        bosTokenID: tokenizer.bosToken.flatMap { tokenizer.convertTokenToId($0) }
       )
 
       var vectors = Array(repeating: [Float](), count: texts.count)
@@ -103,7 +103,7 @@ public actor MLXEmbedder: VecturaEmbedder {
           maxLength: plan.maxTokenLength
         )
         let mask = stacked(maskRows.map { row in
-          MLXArray(row.map(Int32.init))
+          MLXArray(row)
         })
         let tokenTypes = MLXArray.zeros(like: padded)
 

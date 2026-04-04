@@ -40,10 +40,10 @@ struct EmbeddingTokenResolverTests {
   func attentionMaskRowsFollowLengths() {
     let rows = EmbeddingTokenResolver.attentionMaskRows(lengths: [3, 1, 0, 6], maxLength: 4)
     #expect(rows == [
-      [1, 1, 1, 0],
-      [1, 0, 0, 0],
-      [0, 0, 0, 0],
-      [1, 1, 1, 1],
+      [true, true, true, false],
+      [true, false, false, false],
+      [false, false, false, false],
+      [true, true, true, true],
     ])
   }
 }
