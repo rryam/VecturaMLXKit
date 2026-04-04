@@ -1,21 +1,29 @@
 import Foundation
+import HuggingFace
 import MLX
 import MLXEmbedders
+import MLXHuggingFace
+import MLXLMCommon
+import Tokenizers
 import VecturaKit
 
 /// An embedder implementation using MLX library for generating vector embeddings.
 public actor MLXEmbedder: VecturaEmbedder {
-  private let modelContainer: ModelContainer
-  private let configuration: ModelConfiguration
+  private let modelContainer: MLXEmbedders.ModelContainer
+  private let configuration: MLXEmbedders.ModelConfiguration
   private var cachedDimension: Int?
 
   /// Initializes an MLXEmbedder with the specified model configuration.
   ///
   /// - Parameter configuration: The MLX model configuration to use. Defaults to `.nomic_text_v1_5`.
   /// - Throws: An error if the model container cannot be loaded.
-  public init(configuration: ModelConfiguration = .nomic_text_v1_5) async throws {
+  public init(configuration: MLXEmbedders.ModelConfiguration = .nomic_text_v1_5) async throws {
     self.configuration = configuration
-    self.modelContainer = try await MLXEmbedders.loadModelContainer(configuration: configuration)
+    self.modelContainer = try await MLXEmbedders.loadModelContainer(
+      from: #hubDownloader(),
+      using: #huggingFaceTokenizerLoader(),
+      configuration: configuration
+    )
   }
 
   /// The dimensionality of the embedding vectors produced by this embedder.
