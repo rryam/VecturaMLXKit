@@ -7,6 +7,11 @@ import MLXEmbedders
 @main
 struct TestMLXExamples {
   static func main() async throws {
+    if let text = ProcessInfo.processInfo.environment["MLX_EMBED_TEXT"] {
+      try await printEmbedding(for: text)
+      return
+    }
+
     if ProcessInfo.processInfo.environment["MLX_RUNTIME_BENCH"] == "1" {
       try await runRuntimeBenchmark()
       return
@@ -124,6 +129,25 @@ struct TestMLXExamples {
     print(String(format: "  avg_seconds=%.4f", avgSeconds))
     print(String(format: "  p95_seconds=%.4f", p95Seconds))
     print(String(format: "  throughput_texts_per_second=%.2f", throughput))
+  }
+
+  private static func printEmbedding(for text: String) async throws {
+    let embedder = try await MLXEmbedder(configuration: .nomic_text_v1_5)
+    let vector = try await embedder.embed(text: text)
+    let previewCount = min(vector.count, 24)
+    let preview = vector.prefix(previewCount)
+    let norm = sqrt(vector.reduce(0) { partial, value in
+      partial + Double(value * value)
+    })
+
+    print("MLX Embedding Snapshot")
+    print("  dimension=\(vector.count)")
+    print(String(format: "  l2_norm=%.6f", norm))
+    print("  preview_first_\(previewCount)=\(Array(preview))")
+
+    if ProcessInfo.processInfo.environment["MLX_EMBED_FULL"] == "1" {
+      print("  full_vector=\(vector)")
+    }
   }
 
   private static func percentile(_ target: Double, values: [Double]) -> Double {
