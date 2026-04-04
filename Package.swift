@@ -35,7 +35,6 @@ let package = Package(
       dependencies: [
         .product(name: "VecturaKit", package: "VecturaKit"),
         .product(name: "MLXEmbedders", package: "mlx-swift-lm"),
-        .product(name: "MLXHuggingFace", package: "mlx-swift-lm"),
         .product(name: "MLXLMCommon", package: "mlx-swift-lm"),
         .product(name: "Tokenizers", package: "swift-transformers"),
         .product(name: "HuggingFace", package: "swift-huggingface"),
