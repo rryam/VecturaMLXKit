@@ -182,6 +182,7 @@ enum EmbeddingError: Error {
   case unsupportedPoolingShape([Int])
   case vectorCountMismatch(expected: Int, received: Int)
   case invalidRepositoryID(String)
+  case invalidSafeTensorsHeader(URL)
 }
 
 private struct HuggingFaceDownloader: MLXLMCommon.Downloader {
@@ -202,7 +203,7 @@ private struct HuggingFaceDownloader: MLXLMCommon.Downloader {
       throw EmbeddingError.invalidRepositoryID(id)
     }
 
-    return try await client.downloadSnapshot(
+    let snapshot = try await client.downloadSnapshot(
       of: repoID,
       revision: revision ?? "main",
       matching: patterns,
@@ -210,12 +211,129 @@ private struct HuggingFaceDownloader: MLXLMCommon.Downloader {
         progressHandler(progress)
       }
     )
+    return try normalizedNomicSnapshotIfNeeded(snapshot, id: id)
+  }
+
+  private func normalizedNomicSnapshotIfNeeded(_ snapshot: URL, id: String) throws -> URL {
+    let configURL = snapshot.appending(path: "config.json")
+    guard
+      let configData = try? Data(contentsOf: configURL),
+      var config = try JSONSerialization.jsonObject(with: configData) as? [String: Any],
+      config["model_type"] as? String == "nomic_bert",
+      let maxPositionEmbeddings = config["max_position_embeddings"] as? Int,
+      maxPositionEmbeddings > 0
+    else {
+      return snapshot
+    }
+
+    let safeTensorURLs = try snapshot.safeTensorURLs()
+    let hasPositionEmbeddings = try safeTensorURLs.contains { url in
+      try url.safeTensorHeaderContains { key in
+        key.hasSuffix("embeddings.position_embeddings.weight")
+      }
+    }
+    guard !hasPositionEmbeddings else {
+      return snapshot
+    }
+
+    config["max_position_embeddings"] = 0
+    let normalizedSnapshot = Self.normalizedSnapshotURL(snapshot: snapshot, id: id)
+    try FileManager.default.replaceDirectory(at: normalizedSnapshot)
+
+    let contents = try FileManager.default.contentsOfDirectory(
+      at: snapshot,
+      includingPropertiesForKeys: nil,
+      options: [.skipsHiddenFiles]
+    )
+    for sourceURL in contents where sourceURL.lastPathComponent != "config.json" {
+      let destinationURL = normalizedSnapshot.appending(path: sourceURL.lastPathComponent)
+      try FileManager.default.createSymbolicLink(
+        at: destinationURL,
+        withDestinationURL: sourceURL
+      )
+    }
+
+    let normalizedConfigData = try JSONSerialization.data(
+      withJSONObject: config,
+      options: [.prettyPrinted, .sortedKeys]
+    )
+    try normalizedConfigData.write(to: normalizedSnapshot.appending(path: "config.json"))
+    return normalizedSnapshot
+  }
+
+  private static func normalizedSnapshotURL(snapshot: URL, id: String) -> URL {
+    let safeID = id.map { character in
+      character.isLetter || character.isNumber ? character : "-"
+    }.reduce(into: "") { result, character in
+      result.append(character)
+    }
+    return FileManager.default.temporaryDirectory
+      .appending(path: "VecturaMLXKit")
+      .appending(path: "NormalizedSnapshots")
+      .appending(path: "\(safeID)-\(snapshot.lastPathComponent)")
+  }
+}
+
+private extension FileManager {
+  func replaceDirectory(at url: URL) throws {
+    if fileExists(atPath: url.path) {
+      try removeItem(at: url)
+    }
+    try createDirectory(at: url, withIntermediateDirectories: true)
+  }
+}
+
+private extension URL {
+  func safeTensorURLs() throws -> [URL] {
+    guard let enumerator = FileManager.default.enumerator(
+      at: self,
+      includingPropertiesForKeys: [.isRegularFileKey, .isSymbolicLinkKey],
+      options: [.skipsHiddenFiles]
+    ) else {
+      return []
+    }
+
+    return enumerator.compactMap { item in
+      guard let url = item as? URL, url.pathExtension == "safetensors" else {
+        return nil
+      }
+      return url
+    }
+  }
+
+  func safeTensorHeaderContains(_ predicate: (String) throws -> Bool) throws -> Bool {
+    let handle = try FileHandle(forReadingFrom: self)
+    defer {
+      try? handle.close()
+    }
+
+    guard let lengthData = try handle.read(upToCount: 8), lengthData.count == 8 else {
+      throw EmbeddingError.invalidSafeTensorsHeader(self)
+    }
+
+    let headerLength = lengthData.enumerated().reduce(UInt64(0)) { partialResult, element in
+      partialResult | (UInt64(element.element) << UInt64(element.offset * 8))
+    }
+    guard headerLength <= UInt64(Int.max),
+      let headerData = try handle.read(upToCount: Int(headerLength)),
+      headerData.count == Int(headerLength),
+      let header = try JSONSerialization.jsonObject(with: headerData) as? [String: Any]
+    else {
+      throw EmbeddingError.invalidSafeTensorsHeader(self)
+    }
+
+    for key in header.keys where key != "__metadata__" {
+      if try predicate(key) {
+        return true
+      }
+    }
+    return false
   }
 }
 
 private struct TransformersTokenizerLoader: MLXLMCommon.TokenizerLoader {
   func load(from directory: URL) async throws -> any MLXLMCommon.Tokenizer {
-    let upstream = try await AutoTokenizer.from(modelFolder: directory)
+    let upstream = try await AutoTokenizer.from(directory: directory)
     return HuggingFaceTokenizerBridge(upstream)
   }
 }
@@ -232,7 +350,7 @@ private struct HuggingFaceTokenizerBridge: MLXLMCommon.Tokenizer {
   }
 
   func decode(tokenIds: [Int], skipSpecialTokens: Bool) -> String {
-    upstream.decode(tokens: tokenIds, skipSpecialTokens: skipSpecialTokens)
+    upstream.decode(tokenIds: tokenIds, skipSpecialTokens: skipSpecialTokens)
   }
 
   func convertTokenToId(_ token: String) -> Int? {
