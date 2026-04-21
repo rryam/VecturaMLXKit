@@ -1,6 +1,7 @@
 import ArgumentParser
 import Foundation
 import MLXEmbedders
+import MLXLMCommon
 import VecturaKit
 import VecturaMLXKit
 
@@ -38,7 +39,7 @@ struct VecturaMLXCLI: AsyncParsableCommand {
     dimension: Int? = nil,
     numResults: Int = 10,
     threshold: Float = 0.7,
-    modelConfiguration: MLXEmbedders.ModelConfiguration = .nomic_text_v1_5
+    modelConfiguration: MLXLMCommon.ModelConfiguration = EmbedderRegistry.nomic_text_v1_5
   ) async throws -> VecturaKit {
     let config = try VecturaConfig(
       name: dbName,

@@ -8,8 +8,8 @@ import VecturaKit
 
 /// An embedder implementation using MLX library for generating vector embeddings.
 public actor MLXEmbedder: VecturaEmbedder {
-  private let modelContainer: MLXEmbedders.ModelContainer
-  private let configuration: MLXEmbedders.ModelConfiguration
+  private let modelContainer: EmbedderModelContainer
+  private let configuration: MLXLMCommon.ModelConfiguration
   private let adaptiveBatchingEnabled: Bool
   private var cachedDimension: Int?
 
@@ -17,10 +17,10 @@ public actor MLXEmbedder: VecturaEmbedder {
   ///
   /// - Parameter configuration: The MLX model configuration to use. Defaults to `.nomic_text_v1_5`.
   /// - Throws: An error if the model container cannot be loaded.
-  public init(configuration: MLXEmbedders.ModelConfiguration = .nomic_text_v1_5) async throws {
+  public init(configuration: MLXLMCommon.ModelConfiguration = EmbedderRegistry.nomic_text_v1_5) async throws {
     self.configuration = configuration
     self.adaptiveBatchingEnabled = Self.resolveAdaptiveBatchingSetting()
-    self.modelContainer = try await MLXEmbedders.loadModelContainer(
+    self.modelContainer = try await EmbedderModelFactory.shared.loadContainer(
       from: HuggingFaceDownloader(),
       using: TransformersTokenizerLoader(),
       configuration: configuration
@@ -61,7 +61,10 @@ public actor MLXEmbedder: VecturaEmbedder {
       }
     }
 
-    return try await modelContainer.perform { (model: EmbeddingModel, tokenizer, pooling) -> [[Float]] in
+    return try await modelContainer.perform { context -> [[Float]] in
+      let model = context.model
+      let tokenizer = context.tokenizer
+      let pooling = context.pooling
       let inputs = texts.map {
         tokenizer.encode(text: $0, addSpecialTokens: true)
       }
