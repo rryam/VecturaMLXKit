@@ -23,7 +23,7 @@ let package = Package(
     ),
   ],
   dependencies: [
-    .package(url: "https://github.com/subsriram/VecturaKit.git", branch: "main"),
+    .package(url: "https://github.com/rryam/VecturaKit.git", branch: "main"),
     .package(url: "https://github.com/ml-explore/mlx-swift-lm/", branch: "main"),
     .package(url: "https://github.com/DePasqualeOrg/swift-tokenizers.git", branch: "main"),
     .package(url: "https://github.com/huggingface/swift-huggingface.git", from: "0.9.0"),

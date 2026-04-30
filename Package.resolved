@@ -139,10 +139,10 @@
     {
       "identity" : "vecturakit",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/subsriram/VecturaKit.git",
+      "location" : "https://github.com/rryam/VecturaKit.git",
       "state" : {
         "branch" : "main",
-        "revision" : "61df44721fd1ae5fdf4ceff94e6b87d9923a1449"
+        "revision" : "66928a30ae5582c57fd98947040fde91e9004813"
       }
     },
     {
