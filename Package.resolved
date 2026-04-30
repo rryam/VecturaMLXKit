@@ -1,5 +1,5 @@
 {
-  "originHash" : "1fe6fc1f01b3be7f68c806e777648dd5091be24c34d58918b625e6897f737591",
+  "originHash" : "d6ec5e5a0282e2f95cdc0b47656f8519b90f3512e0e30302268b9b98cd61eb82",
   "pins" : [
     {
       "identity" : "eventsource",
@@ -25,7 +25,7 @@
       "location" : "https://github.com/ml-explore/mlx-swift-lm/",
       "state" : {
         "branch" : "main",
-        "revision" : "8c9dd6391139242261bcf27d253c326f9cf2d567"
+        "revision" : "7e2b7107be52ffbfe488f3c7987d3f52c1858b4b"
       }
     },
     {
@@ -74,15 +74,6 @@
       }
     },
     {
-      "identity" : "swift-embeddings",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/jkrukowski/swift-embeddings.git",
-      "state" : {
-        "revision" : "66994e3b3ed172a9b691b59d11bd0702c3f5eb33",
-        "version" : "0.0.26"
-      }
-    },
-    {
       "identity" : "swift-huggingface",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/huggingface/swift-huggingface.git",
@@ -119,24 +110,6 @@
       }
     },
     {
-      "identity" : "swift-safetensors",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/jkrukowski/swift-safetensors.git",
-      "state" : {
-        "revision" : "d249ae40bdea0db5e725d86c84a74d5eaf0e0e8f",
-        "version" : "0.1.0"
-      }
-    },
-    {
-      "identity" : "swift-sentencepiece",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/jkrukowski/swift-sentencepiece",
-      "state" : {
-        "revision" : "36a8b2b45733f6adb3092100f16e4c7d38a10a7c",
-        "version" : "0.0.6"
-      }
-    },
-    {
       "identity" : "swift-syntax",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/swiftlang/swift-syntax.git",
@@ -155,12 +128,12 @@
       }
     },
     {
-      "identity" : "swift-transformers",
+      "identity" : "swift-tokenizers",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/huggingface/swift-transformers",
+      "location" : "https://github.com/DePasqualeOrg/swift-tokenizers.git",
       "state" : {
-        "revision" : "b38443e44d93eca770f2eb68e2a4d0fa100f9aa2",
-        "version" : "1.3.0"
+        "branch" : "main",
+        "revision" : "c0776db53dc722f53b5538f3594ed7a3904db820"
       }
     },
     {
@@ -168,8 +141,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/rryam/VecturaKit.git",
       "state" : {
-        "revision" : "55f1489dcc3baaa47dde6cfc4127ba827f39c4fd",
-        "version" : "5.2.1"
+        "revision" : "66928a30ae5582c57fd98947040fde91e9004813",
+        "version" : "6.0.0"
       }
     },
     {

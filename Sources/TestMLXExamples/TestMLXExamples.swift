@@ -28,7 +28,7 @@ struct TestMLXExamples {
     )
     let vectorDB = try await VecturaKit(
       config: config,
-      embedder: try await MLXEmbedder(configuration: .nomic_text_v1_5)
+      embedder: try await MLXEmbedder(configuration: EmbedderRegistry.nomic_text_v1_5)
     )
     debugPrint("MLX Database initialized successfully")
     debugPrint("Document count: \(try await vectorDB.documentCount)")
@@ -103,7 +103,7 @@ struct TestMLXExamples {
       ?? true
     let modeLabel = adaptiveEnabled ? "adaptive" : "single-batch"
 
-    let embedder = try await MLXEmbedder(configuration: .nomic_text_v1_5)
+    let embedder = try await MLXEmbedder(configuration: EmbedderRegistry.nomic_text_v1_5)
     let corpus = makeSyntheticTexts(seed: 20260305, count: 384)
     let iterations = 5
 
@@ -132,7 +132,7 @@ struct TestMLXExamples {
   }
 
   private static func printEmbedding(for text: String) async throws {
-    let embedder = try await MLXEmbedder(configuration: .nomic_text_v1_5)
+    let embedder = try await MLXEmbedder(configuration: EmbedderRegistry.nomic_text_v1_5)
     let vector = try await embedder.embed(text: text)
     let previewCount = min(vector.count, 24)
     let preview = vector.prefix(previewCount)

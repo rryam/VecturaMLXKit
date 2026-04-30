@@ -1,6 +1,7 @@
 import Foundation
 import Metal
 import MLX
+import MLXEmbedders
 import Testing
 @testable import VecturaMLXKit
 @testable import VecturaKit
@@ -71,7 +72,7 @@ struct VecturaMLXKitTests {
     }
 
     do {
-      let embedder = try await MLXEmbedder(configuration: .nomic_text_v1_5)
+      let embedder = try await MLXEmbedder(configuration: EmbedderRegistry.nomic_text_v1_5)
       return try await VecturaKit(config: config, embedder: embedder)
     } catch {
       return nil
