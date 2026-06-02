@@ -349,11 +349,22 @@ private struct HuggingFaceTokenizerBridge: MLXLMCommon.Tokenizer {
   }
 
   func encode(text: String, addSpecialTokens: Bool) -> [Int] {
-    upstream.encode(text: text, addSpecialTokens: addSpecialTokens)
+    // `Tokenizers.Tokenizer.encode` is throwing, but the `MLXLMCommon.Tokenizer`
+    // protocol this bridge conforms to is non-throwing, so absorb the error and
+    // fall back to an empty token list.
+    let encode: () throws -> [Int] = {
+      upstream.encode(text: text, addSpecialTokens: addSpecialTokens)
+    }
+    return (try? encode()) ?? []
   }
 
   func decode(tokenIds: [Int], skipSpecialTokens: Bool) -> String {
-    upstream.decode(tokenIds: tokenIds, skipSpecialTokens: skipSpecialTokens)
+    // See note in `encode(text:addSpecialTokens:)`: bridge a throwing upstream
+    // call into the non-throwing protocol requirement.
+    let decode: () throws -> String = {
+      upstream.decode(tokenIds: tokenIds, skipSpecialTokens: skipSpecialTokens)
+    }
+    return (try? decode()) ?? ""
   }
 
   func convertTokenToId(_ token: String) -> Int? {
