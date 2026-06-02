@@ -24,12 +24,12 @@ Add both VecturaKit and VecturaMLXKit to your `Package.swift`:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/rryam/VecturaKit.git", from: "5.0.0"),
-    .package(url: "https://github.com/rryam/VecturaMLXKit.git", from: "2.0.0"),
+    .package(url: "https://github.com/rryam/VecturaKit.git", from: "6.0.0"),
+    .package(url: "https://github.com/rryam/VecturaMLXKit.git", from: "3.0.0"),
 ],
 ```
 
-`VecturaMLXKit` 2.x tracks the `VecturaKit` 5.x release line and shares the same minimum deployment targets:
+`VecturaMLXKit` 3.x tracks the `VecturaKit` 6.x release line and shares the same minimum deployment targets:
 macOS 15, iOS 18, tvOS 18, visionOS 2, and watchOS 11.
 
 Or add them via Xcode's **File > Add Package Dependencies** UI — no special configuration needed.
