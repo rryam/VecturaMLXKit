@@ -1,5 +1,5 @@
 {
-  "originHash" : "d6ec5e5a0282e2f95cdc0b47656f8519b90f3512e0e30302268b9b98cd61eb82",
+  "originHash" : "45302173aad875ac54ea93d4dc4223217776c6dd6dc2e4455a1f90a47242efef",
   "pins" : [
     {
       "identity" : "eventsource",
@@ -24,8 +24,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/ml-explore/mlx-swift-lm/",
       "state" : {
-        "branch" : "main",
-        "revision" : "7e2b7107be52ffbfe488f3c7987d3f52c1858b4b"
+        "revision" : "1c05248bb0899e2a7a4962b84d319cf12f4e12aa",
+        "version" : "3.31.3"
       }
     },
     {
@@ -85,10 +85,10 @@
     {
       "identity" : "swift-jinja",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/huggingface/swift-jinja.git",
+      "location" : "https://github.com/DePasqualeOrg/swift-jinja.git",
       "state" : {
-        "revision" : "d81197f35f41445bc10e94600795e68c6f5e94b0",
-        "version" : "2.3.1"
+        "revision" : "11501ff323c0001da371541c182ad1f9445f9231",
+        "version" : "0.2.0"
       }
     },
     {
@@ -132,8 +132,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/DePasqualeOrg/swift-tokenizers.git",
       "state" : {
-        "branch" : "main",
-        "revision" : "c0776db53dc722f53b5538f3594ed7a3904db820"
+        "revision" : "547a55f2cdc024750c2ea6ef08603d7348986051",
+        "version" : "0.4.3"
       }
     },
     {
