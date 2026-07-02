@@ -24,8 +24,8 @@ let package = Package(
   ],
   dependencies: [
     .package(url: "https://github.com/rryam/VecturaKit.git", from: "6.0.0"),
-    .package(url: "https://github.com/ml-explore/mlx-swift-lm/", branch: "main"),
-    .package(url: "https://github.com/DePasqualeOrg/swift-tokenizers.git", branch: "main"),
+    .package(url: "https://github.com/ml-explore/mlx-swift-lm/", exact: "3.31.3"),
+    .package(url: "https://github.com/DePasqualeOrg/swift-tokenizers.git", exact: "0.4.3"),
     .package(url: "https://github.com/huggingface/swift-huggingface.git", from: "0.9.0"),
     .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.4.0"),
   ],
